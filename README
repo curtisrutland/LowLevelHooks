@@ -1,1 +1,3 @@
-Library to hook low level mouse and keyboard events.
+Two Libraries:
+	One for hooking the keyboard and mouse at low level.
+	One for registering a Global HotKey with for your Windows Forms application.
