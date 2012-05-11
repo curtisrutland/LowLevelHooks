@@ -1,9 +1,11 @@
 ﻿using System;
 
-namespace LowLevelHooks {
-    public abstract class HookEventArgs : EventArgs {
-        public HookEventType EventType {get; internal set;}
+namespace LowLevelHooks
+{
+    public abstract class HookEventArgs : EventArgs
+    {
+        protected HookEventType EventType { get; set; }
     }
 
-    public enum HookEventType {Keyboard, Mouse}
+    public enum HookEventType { Keyboard, Mouse }
 }

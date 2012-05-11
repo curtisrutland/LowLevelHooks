@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace LowLevelHooks.Keyboard {
+namespace LowLevelHooks.Keyboard
+{
     [StructLayout(LayoutKind.Sequential)]
-    public struct KBDLLHOOKSTRUCT {
+    public struct KBDLLHOOKSTRUCT
+    {
         public int VkCode { get; set; }
         public uint ScanCode { get; set; }
         public uint Flags { get; set; }

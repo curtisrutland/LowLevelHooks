@@ -1,6 +1,8 @@
 ﻿
-namespace LowLevelHooks {
-    public interface IHook {
+namespace LowLevelHooks
+{
+    public interface IHook
+    {
         void Hook();
         void Unhook();
     }

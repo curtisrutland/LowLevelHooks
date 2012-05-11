@@ -1,29 +1,32 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 
-namespace LowLevelHooks.Mouse {
-    public class MouseHookEventArgs : HookEventArgs {
-        public MouseHookEventArgs(MSLLHOOKSTRUCT lparam) {
+namespace LowLevelHooks.Mouse
+{
+    public class MouseHookEventArgs : HookEventArgs
+    {
+        public MouseHookEventArgs(MSLLHOOKSTRUCT lparam)
+        {
             EventType = HookEventType.Mouse;
             LParam = lparam;
         }
 
-        public MSLLHOOKSTRUCT LParam { get; private set; }
+        private MSLLHOOKSTRUCT LParam { get; set; }
 
-        public Point Position {
-            get {
+        public Point Position
+        {
+            get
+            {
                 return LParam.Point;
             }
         }
 
-        public MouseScrollDirection ScrollDirection {
-            get {
+        public MouseScrollDirection ScrollDirection
+        {
+            get
+            {
                 if (MouseEventName != MouseEventNames.MouseWheel)
                     return MouseScrollDirection.None;
-                if ((LParam.MouseData >> 16) > 0)
-                    return MouseScrollDirection.Up;
-                else
-                    return MouseScrollDirection.Down;
+                return (LParam.MouseData >> 16) > 0 ? MouseScrollDirection.Up : MouseScrollDirection.Down;
             }
         }
 

@@ -1,20 +1,27 @@
 ﻿using System;
+using System.Globalization;
 using System.Windows.Forms;
 
-namespace LowLevelHooks.Keyboard {
-    public class KeyboardHookEventArgs : HookEventArgs {
-        public KeyboardHookEventArgs(KBDLLHOOKSTRUCT lparam) {
+namespace LowLevelHooks.Keyboard
+{
+    public class KeyboardHookEventArgs : HookEventArgs
+    {
+        public KeyboardHookEventArgs(KBDLLHOOKSTRUCT lparam)
+        {
             EventType = HookEventType.Keyboard;
             LParam = lparam;
         }
 
-        private KBDLLHOOKSTRUCT _LParam;
-        public KBDLLHOOKSTRUCT LParam {
-            get { return _LParam; }
-            private set {
-                _LParam = value;
-                uint nonVirtual = Win32.MapVirtualKey((uint)VirtualKeyCode, (uint)2);
-                _Char = Convert.ToChar(nonVirtual);
+        private KBDLLHOOKSTRUCT lParam;
+
+        private KBDLLHOOKSTRUCT LParam
+        {
+            get { return lParam; }
+            set
+            {
+                lParam = value;
+                var nonVirtual = NativeMethods.MapVirtualKey((uint)VirtualKeyCode, 2);
+                Char = Convert.ToChar(nonVirtual);
             }
         }
 
@@ -22,34 +29,27 @@ namespace LowLevelHooks.Keyboard {
 
         public Keys Key { get { return (Keys)VirtualKeyCode; } }
 
-        private char _Char;
-        public char Char {
-            get {
-                return _Char;
-            }
-            private set {
-                _Char = value;
-            }
-        }
+        public char Char { get; private set; }
 
-        public string KeyString {
-            get {
-                if (Char == '\0') {
-                    if (Key == Keys.Return)
-                        return "[Enter]";
-                    return string.Format("[{0}]", Key.ToString());
+        public string KeyString
+        {
+            get
+            {
+                if (Char == '\0')
+                {
+                    return Key == Keys.Return ? "[Enter]" : string.Format("[{0}]", Key);
                 }
-                else {
-                    if (Char == '\r') {
-                        Char = '\0';
-                        return "[Enter]";
-                    }
-                    if (Char == '\b') {
-                        Char = '\0';
-                        return "[Backspace]";
-                    }
-                    return this.Char.ToString();
+                if (Char == '\r')
+                {
+                    Char = '\0';
+                    return "[Enter]";
                 }
+                if (Char == '\b')
+                {
+                    Char = '\0';
+                    return "[Backspace]";
+                }
+                return Char.ToString(CultureInfo.InvariantCulture);
             }
         }
 

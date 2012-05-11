@@ -1,62 +1,163 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
+using System.Configuration;
+using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
 using LowLevelHooks.Keyboard;
 using LowLevelHooks.Mouse;
+using LowLevelHooks.Test.Properties;
 
-namespace LowLevelHooks.Test {
-    public partial class Form1 : Form {
+namespace LowLevelHooks.Test
+{
+    public partial class Form1 : Form
+    {
+        private readonly KeyboardHook kHook;
+        private readonly MouseHook mHook;
+        private bool capturingKeys;
+        private bool capturingMouse;
 
-        KeyboardHook kHook;
-        MouseHook mHook;
+        private static string KeyFilePath { get { return ConfigurationManager.AppSettings["keyboardWriterPath"]; } }
+        private static string MouseFilePath { get { return ConfigurationManager.AppSettings["mouseWriterPath"]; } }
 
-        public Form1() {
+        private TextWriter mouseWriter;
+        private TextWriter MouseWriter
+        {
+            get { return mouseWriter ?? (mouseWriter = TextWriter.Synchronized(new StreamWriter(MouseFilePath, true))); }
+        }
+
+        private TextWriter keyboardWriter;
+        private TextWriter KeyboardWriter
+        {
+            get { return keyboardWriter ?? (keyboardWriter = TextWriter.Synchronized(new StreamWriter(KeyFilePath, true))); }
+        }
+
+        public Form1()
+        {
             InitializeComponent();
             kHook = new KeyboardHook();
             mHook = new MouseHook();
-            kHook.KeyEvent += new EventHandler<KeyboardHookEventArgs>(kHook_KeyEvent);
-            mHook.MouseEvent += new EventHandler<MouseHookEventArgs>(mHook_MouseEvent);
-            this.FormClosing += new FormClosingEventHandler(Form1_FormClosing);
+            kHook.KeyEvent += KHookKeyEvent;
+            mHook.MouseEvent += MHookMouseEvent;
+            FormClosing += Form1FormClosing;
         }
 
-        void mHook_MouseEvent(object sender, MouseHookEventArgs e) {
-            if (e.MouseEventName == MouseEventNames.MouseWheel) {
-                mouseTextBox.Text += string.Format("{0}, Direction: {1}{2}", e.MouseEventName.ToString(), e.ScrollDirection.ToString(), Environment.NewLine);
-            }
-            else {
-                mouseTextBox.Text += string.Format("{0}: ({1},{2}){3}", e.MouseEventName.ToString(), e.Position.X, e.Position.Y, Environment.NewLine);
-            }
-            mouseTextBox.Select(mouseTextBox.TextLength - 1, 0);
-            mouseTextBox.ScrollToCaret();
-        }
-
-        void kHook_KeyEvent(object sender, KeyboardHookEventArgs e) {
-            if (e.Char == '\0') {
-                keyboardTextBox.Text += e.KeyString;
-            }
-            else {
-                if (e.KeyboardEventName == KeyboardEventNames.KeyUp)
-                    keyboardTextBox.Text += e.KeyString;
-            }
-            if (mouseTextBox.TextLength - 1 >= 0) {
-                keyboardTextBox.Select(mouseTextBox.TextLength - 1, 0);
-                keyboardTextBox.ScrollToCaret();
-            }
-        }
-
-        private void Form1_Load(object sender, EventArgs e) {
-            kHook.Hook();
-            mHook.Hook();
-        }
-
-        void Form1_FormClosing(object sender, FormClosingEventArgs e) {
+        void Form1FormClosing(object sender, FormClosingEventArgs e)
+        {
             kHook.Dispose();
             mHook.Dispose();
+            if (mouseWriter != null)
+            {
+                mouseWriter.Dispose();
+            }
+            if (keyboardWriter != null)
+            {
+                keyboardWriter.Dispose();
+            }
+        }
+
+        void MHookMouseEvent(object sender, MouseHookEventArgs e)
+        {
+            WriteMouse(e);
+        }
+
+        private void WriteMouse(MouseHookEventArgs e)
+        {
+            if (e.MouseEventName == MouseEventNames.MouseWheel)
+            {
+                MouseWriter.Write("{3} : {0}, Direction: {1}{2}", e.MouseEventName, e.ScrollDirection, Environment.NewLine, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+            }
+            else
+            {
+                MouseWriter.Write("{4} : {0}: ({1},{2}){3}", e.MouseEventName, e.Position.X, e.Position.Y, Environment.NewLine, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+            }
+        }
+
+        void KHookKeyEvent(object sender, KeyboardHookEventArgs e)
+        {
+            WriteKey(e);
+        }
+
+        private void WriteKey(KeyboardHookEventArgs e)
+        {
+            if (e.Char == '\0')
+            {
+                KeyboardWriter.Write(e.KeyString);
+            }
+            else
+            {
+                if (e.KeyboardEventName == KeyboardEventNames.KeyUp)
+                    KeyboardWriter.Write(e.KeyString);
+            }
+        }
+
+        private void CaptureKeysButtonClick(object sender, EventArgs e)
+        {
+            if(capturingKeys)
+            {
+                captureKeysButton.Text = Resources.CaptureKeysString;
+                clearKeyLogButton.Enabled = true;
+                kHook.Unhook();
+                KeyboardWriter.Flush();
+            }
+            else
+            {
+                captureKeysButton.Text = Resources.StopCapturingKeysString;
+                clearKeyLogButton.Enabled = false;
+                kHook.Hook();
+            }
+            capturingKeys = !capturingKeys;
+        }
+
+        private void CaptureMouseButtonClick(object sender, EventArgs e)
+        {
+            if (capturingMouse)
+            {
+                captureMouseButton.Text = Resources.CaptureMouseString;
+                clearMouseLogButton.Enabled = true;
+                mHook.Unhook();
+                MouseWriter.Flush();
+            }
+            else
+            {
+                captureMouseButton.Text = Resources.StopCapturingMouseString;
+                clearMouseLogButton.Enabled = false;
+                mHook.Hook();
+            }
+            capturingMouse = !capturingMouse;
+        }
+
+        private void ClearKeyLogButtonClick(object sender, EventArgs e)
+        {
+            if (keyboardWriter != null)
+            {
+                keyboardWriter.Dispose();
+                keyboardWriter = null;
+            }
+            File.Delete(KeyFilePath);
+        }
+
+        private void ClearMouseLogButtonClick(object sender, EventArgs e)
+        {
+            if(mouseWriter != null)
+            {
+                mouseWriter.Dispose();
+                mouseWriter = null;
+            }
+            File.Delete(MouseFilePath);
+        }
+
+        private void OpenKeyFileButtonClick(object sender, EventArgs e)
+        {
+            if (File.Exists(KeyFilePath))
+                Process.Start(KeyFilePath);
+            else MessageBox.Show(Resources.NoFileString);
+        }
+
+        private void OpenMouseFileButtonClick(object sender, EventArgs e)
+        {
+            if (File.Exists(MouseFilePath))
+                Process.Start(MouseFilePath);
+            else MessageBox.Show(Resources.NoFileString);
         }
     }
 }
